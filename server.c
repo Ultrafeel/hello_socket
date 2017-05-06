@@ -30,7 +30,7 @@ static const struct option long_options[] = {
 };
 
 /* Описание коротких опций для функции getopt_long(). */
-static const char* const short_options = "a:hm:p:v";
+static const char* const short_options = "a:hrtp:v";
 
 /* Сообщение о том, как правильно использовать программу. */
 static const char* const usage_template =
@@ -64,38 +64,40 @@ static void clean_up_child_process(int signal_number)
 
 /* HTTP-ответ и заголовок, возвращаемые в случае
  успешной обработки запроса.*/
-static char* ok_response =
-	" OK\n"; 
+static char const* const ok_response =
+	" OK!\n"; 
 
 /* ответ,на случай непонятного запроса. */
-static char* bad_request_response =
+static char const* const bad_request_response =
 	"Bad Reguest\n";
 /* Обработка запроса  PAGE и
  запись результата в файл с дескриптором CONNECTION_FD. */
-static void handle_get(int connection_fd, const char* page)
+static void handle_get(int connection_fd, const char* message)
 {
 
 	/* Убеждаемся, что имя страницы начинается с косой черты и
 	не содержит других символов косой черты, так как
 	подкаталоги не поддерживаются. */
+	char response[1024];
 
-	if (page == NULL) {
+	if (message == NULL) {
 		/* Имя страницы неправильно сформировано или не удалось
 		открыть модуль с указанным именем. В любом случае
 		возвращается HTTP-ответ "404. Not Found". */
-		char response[1024];
 
 		/* Формирование ответного сообщения. */
 		snprintf(response, sizeof(response),
-			bad_request_response, page);
+			bad_request_response);
 		/* Отправка его клиенту. */
 		write(connection_fd, response, strlen(response));
 	} else {
 		/* Запрашиваемый модуль успешно загружен. */
 
+		snprintf(response, sizeof(response),
+			" recieve: %s, '%s' . ", ok_response, message);
 		/* Выдача HTTP-ответа, обозначающего успешную обработку
 		запроса, и HTTP-заголовка для HTML-страницы. */
-		write(connection_fd, ok_response, strlen(ok_response));
+		write(connection_fd, response, strlen(response));
 		/* Вызов модуля, генерирующего HTML-код страницы и
 		записывающего этот код в указанный файл. */
 		//(*module->generate_function)(connection_fd);
@@ -115,16 +117,17 @@ static void handle_connection(int connection_fd)
 		read(connection_fd, buffer, sizeof(buffer) - 1);
 	if (bytes_read > 0) {
 
-		char protocol[sizeof(buffer)];
+		//char protocol[sizeof(buffer)];
 
 		/* Часть данных успешно прочитана. Завершаем буфер
 		нулевым символом, чтобы его можно было использовать
 		в строковых операциях. */
-		buffer[bytes_read] = '\0';
-		/* Первая строка, посылаемая клиентом, -- это HTTP-запрос.
-		В запросе указаны метод, запрашиваемая страница и
-		версия протокола. */
-		sscanf(buffer, "%s", protocol);
+		//buffer[bytes_read] = '\0';
+		/*  строка, посылаемая клиентом, -- это запрос.
+		 */
+		printf(" server:Recieve : '%s'", buffer);
+		
+		//sscanf(buffer, "%s", protocol);
 		/* В заголовке, стоящем после запроса, может находиться
 		любая информация. В данной реализации HTTP-сервера
 		эта информация не учитывается. Тем не менее необходимо
@@ -132,8 +135,8 @@ static void handle_connection(int connection_fd)
 		до тех пор, пока не встретится конец заголовка,
 		обозначаемый пустой строкой. В HTTP пустой строке
 		соответствуют символы CR/LF. */
-		while (strstr(buffer, " \r\n\r\n") == NULL)
-			bytes_read = read(connection_fd, buffer, sizeof(buffer));
+		//while (strstr(buffer, " \r\n\r\n") == NULL)
+		//	bytes_read = read(connection_fd, buffer, sizeof(buffer));
 		/* Проверка правильности последней операции чтения.
 		Если она не завершилась успешно, произошел разрыв
 		соединения, поэтому завершаем работу. */
@@ -149,7 +152,7 @@ static void handle_connection(int connection_fd)
 				sizeof(bad_request_response));
 		} else
 			/* Корректный запрос. Обрабатываем его. */
-			handle_get(connection_fd, protocol);
+			handle_get(connection_fd, buffer);
 	} else if (bytes_read == 0)
 		/* Клиент разорвал соединение, не успев отправить данные.
 		Ничего не предпринимаем */
@@ -158,14 +161,20 @@ static void handle_connection(int connection_fd)
 		/* Операция чтения завершилась ошибкой. */
 		system_error("read");
 }
-
+int do_exit = 0;
+void terminator_sig_hndlr(int sn)
+{
+	printf("\n terminator_sig_hndlr : %d.\n", sn);
+	do_exit = 1;
+	//if (-1 != server_socket)
+	//	close(server_socket);
+}
 void server_run(struct in_addr local_address, uint16_t port)
 {
 	struct sockaddr_in socket_address;
 	int rval;
 	struct sigaction sigchld_action;
-	int server_socket;
-
+	int server_socket = -1;	
 	/* Устанавливаем обработчик сигнала SIGCHLD, который будет
 	удалять завершившееся дочерние процессы. */
 	memset(&sigchld_action, 0, sizeof(sigchld_action));
@@ -175,6 +184,18 @@ void server_run(struct in_addr local_address, uint16_t port)
 	/* Создание TCP-сокета */
 	server_socket = socket(PF_INET, SOCK_STREAM, 0);
 	if (server_socket == -1) system_error("socket");
+	
+		
+	/**/struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sigemptyset(&sa.sa_mask);
+	
+	sa.sa_handler = &terminator_sig_hndlr;
+	sigaction(SIGTERM, &sa, NULL);
+	sa.sa_handler = &terminator_sig_hndlr;
+	sigaction(SIGINT, &sa, NULL);
+	
+
 	/* Создание адресной структуры, определяющей адрес
 	для приема запросов. */
 	memset(&socket_address, 0, sizeof(socket_address));
@@ -211,7 +232,7 @@ void server_run(struct in_addr local_address, uint16_t port)
 	}
 
 	/* Бесконечный цикл обработки запросов. */
-	while (1) {
+	while (!do_exit) {
 		struct sockaddr_in remote_address;
 		socklen_t address_length;
 		int connection;
@@ -220,6 +241,7 @@ void server_run(struct in_addr local_address, uint16_t port)
 		/* Прием запроса. Эта функция блокируется до тех пор, пока
 		не поступит запрос. */
 		address_length = sizeof(remote_address);
+		errno = 0;
 		connection = accept(server_socket, &remote_address,
 			&address_length);
 		if (connection == -1) {
@@ -249,8 +271,10 @@ void server_run(struct in_addr local_address, uint16_t port)
 		/* Создание дочернего процесса для обработки запроса. */
 		child_pid = fork();
 		if (child_pid == 0) {
+			printf(" child proc: %d\n", getpid());
 			/* Это дочерний процесс. Потоки stdin и stdout ему не нужны,
 			поэтому закрываем их. */
+
 			close(STDIN_FILENO);
 			close(STDOUT_FILENO);
 			/* Дочерний процесс не должен работать с серверным сокетом,
@@ -270,6 +294,9 @@ void server_run(struct in_addr local_address, uint16_t port)
 			/* Вызов функции fork() завершился неудачей. */
 			system_error("fork");
 	}
+	puts("server is closing");
+	close(server_socket);
+	server_socket = -1;
 }
 
 int main(int argc, char* const argv[])
@@ -277,6 +304,7 @@ int main(int argc, char* const argv[])
 	struct in_addr local_address;
 	uint16_t port;
 	int next_option;
+
 
 	/* Сохранение имени программы для отображения в сообщениях
 	об ошибке. */
@@ -286,9 +314,9 @@ int main(int argc, char* const argv[])
 	связан со всеми локальными адресами, и ему автоматически
 	назначается неиспользуемый порт. */
 	local_address.s_addr = INADDR_ANY;
-	port = 0;
-	/* He отображать развернутые сообщения. */
-	verbose = 0;
+	port = (uint16_t) htons(TCP_PORT);
+	/*  отображать развернутые сообщения. */
+	verbose = 1;
 
 	/* Анализ опций. */
 	do {
@@ -319,13 +347,14 @@ int main(int argc, char* const argv[])
 		case 't':
 			/* Пользователь ввел -t или --thread. */
 		{
-
+			printf("thread not supported\n");
+			exit(1);
 		}
 			break;
 		case 'r':
 			/* Пользователь ввел -r или --process. */
 		{
-
+			printf("process mode\n");
 		}
 			break;
 		case 'p':

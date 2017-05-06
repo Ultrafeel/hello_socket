@@ -17,3 +17,5 @@ void system_error(const char* operation) {
     переменной errno. */
     error(operation, strerror(errno));
 }
+
+#define TCP_PORT (1234)
