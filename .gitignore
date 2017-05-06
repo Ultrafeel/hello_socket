@@ -37,3 +37,4 @@ nbproject/private/private.xml
 nbproject/configurations.xml
 server_.c
 main_.c
+nbproject/*
