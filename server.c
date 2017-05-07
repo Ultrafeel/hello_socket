@@ -70,7 +70,17 @@ static char const* const ok_response =
 /* ответ,на случай непонятного запроса. */
 static char const* const bad_request_response =
 	"Bad Reguest\n";
-/* Обработка запроса  PAGE и
+
+void err_show(char const* str)
+{
+	printf("error: %s . errno = %d, err description: %s\n", str, errno, strerror(errno));
+}
+void err_sys(char const* str)
+{
+	err_show(str);
+}
+
+/* Обработка запроса  message и
  запись результата в файл с дескриптором CONNECTION_FD. */
 static void handle_get(int connection_fd, const char* message)
 {
@@ -91,75 +101,115 @@ static void handle_get(int connection_fd, const char* message)
 		/* Отправка его клиенту. */
 		write(connection_fd, response, strlen(response));
 	} else {
-		/* Запрашиваемый модуль успешно загружен. */
+		/* Запрос успешно . */
 
-		snprintf(response, sizeof(response),
-			" recieve: %s, '%s' . ", ok_response, message);
-		/* Выдача HTTP-ответа, обозначающего успешную обработку
-		запроса, и HTTP-заголовка для HTML-страницы. */
-		write(connection_fd, response, strlen(response));
-		/* Вызов модуля, генерирующего HTML-код страницы и
-		записывающего этот код в указанный файл. */
-		//(*module->generate_function)(connection_fd);
-		/* Работа с модулем окончена. */
-		//module_close(module);
-	}
+
+		FILE* ppf = popen(message, "r");
+		if (NULL == ppf) {
+			err_show("popen error");
+				snprintf(response, sizeof(response),
+			"  %s, popen error . ", bad_request_response);
+	
+			write(connection_fd, response, strlen(response));
+
+			return;//exit(1);
+		}
+
+		int size_nprintf  = snprintf(response, sizeof(response),
+			" recieve: %s:", ok_response);
+		write(connection_fd, response, size_nprintf - 1);
+		int pipefd = fileno(ppf);
+		/* Выдача ответа,  */
+		//int response_done = 0;
+		while (1) {
+			errno = 0;
+			ssize_t nread = read(pipefd, response, sizeof(response));
+			if (-1 == nread) {
+				if (EINTR == errno)
+					continue;
+				err_show("write response");
+
+				break;
+			} else if (0 == nread) {
+				
+				break;
+			}
+			ssize_t nwrite = write(connection_fd, response, nread);
+			if (-1 == nwrite) {
+				if (EINTR == errno)
+					continue;
+				err_show("write response");
+				break;
+			}
+		}
+		write(connection_fd, "\0", 1);
+
+		write(connection_fd, END_MARK,
+			sizeof(END_MARK) / sizeof(*END_MARK));
+
+		//response_done = 1;
+
+	}			
 }
 
-/* Обработка клиентского запроса на подключение. */
+/* Обработка клиентского запроса */
 static void handle_connection(int connection_fd)
 {
 	char buffer[256];
 	ssize_t bytes_read;
 
-	/* Получение данных от клиента. */
-	bytes_read =
-		read(connection_fd, buffer, sizeof(buffer) - 1);
-	if (bytes_read > 0) {
+	while (1) {
+		/* Получение данных от клиента. */
+		bytes_read =
+			read(connection_fd, buffer, sizeof(buffer) - 1);
+		if (bytes_read > 0) {
 
-		//char protocol[sizeof(buffer)];
+			//char protocol[sizeof(buffer)];
+			buffer[bytes_read] = 0;
+			/* Часть данных успешно прочитана. Завершаем буфер
+			нулевым символом, чтобы его можно было использовать
+			в строковых операциях. */
+			//buffer[bytes_read] = '\0';
+			/*  строка, посылаемая клиентом, -- это запрос.
+			 */
+			printf(" server:Recieve : '%s'", buffer);
 
-		/* Часть данных успешно прочитана. Завершаем буфер
-		нулевым символом, чтобы его можно было использовать
-		в строковых операциях. */
-		//buffer[bytes_read] = '\0';
-		/*  строка, посылаемая клиентом, -- это запрос.
-		 */
-		printf(" server:Recieve : '%s'", buffer);
-		
-		//sscanf(buffer, "%s", protocol);
-		/* В заголовке, стоящем после запроса, может находиться
-		любая информация. В данной реализации HTTP-сервера
-		эта информация не учитывается. Тем не менее необходимо
-		прочитать все данные, посылаемые клиентом. Данные читаются
-		до тех пор, пока не встретится конец заголовка,
-		обозначаемый пустой строкой. В HTTP пустой строке
-		соответствуют символы CR/LF. */
-		//while (strstr(buffer, " \r\n\r\n") == NULL)
-		//	bytes_read = read(connection_fd, buffer, sizeof(buffer));
-		/* Проверка правильности последней операции чтения.
-		Если она не завершилась успешно, произошел разрыв
-		соединения, поэтому завершаем работу. */
-		if (bytes_read == -1) {
-			close(connection_fd);
-			return;
+			//sscanf(buffer, "%s", protocol);
+			/* В заголовке, стоящем после запроса, может находиться
+			любая информация. В данной реализации HTTP-сервера
+			эта информация не учитывается. Тем не менее необходимо
+			прочитать все данные, посылаемые клиентом. Данные читаются
+			до тех пор, пока не встретится конец заголовка,
+			обозначаемый пустой строкой. В HTTP пустой строке
+			соответствуют символы CR/LF. */
+			//while (strstr(buffer, " \r\n\r\n") == NULL)
+			//	bytes_read = read(connection_fd, buffer, sizeof(buffer));
+			/* Проверка правильности последней операции чтения.
+			Если она не завершилась успешно, произошел разрыв
+			соединения, поэтому завершаем работу. */
+			if (bytes_read == -1) {
+				close(connection_fd);
+				return;
+			}
+			/* Проверка  */
+			if (0) {
+				/* Протокол не поддерживается. */
+				write(connection_fd, bad_request_response,
+					sizeof(bad_request_response));
+			} else
+				/* Корректный запрос. Обрабатываем его. */
+				handle_get(connection_fd, buffer);
+		} else if (bytes_read == 0)
+			/* Клиент разорвал соединение, не успев отправить данные.
+			Ничего не предпринимаем */
+			;
+		else {
+			/* Операция чтения завершилась ошибкой. */
+			system_error("read");
+
+			break;
 		}
-		/* Проверка поля версии. Сервер понимает протокол HTTP
-		версий 1.0 и 1.1. */
-		if (0) {
-			/* Протокол не поддерживается. */
-			write(connection_fd, bad_request_response,
-				sizeof(bad_request_response));
-		} else
-			/* Корректный запрос. Обрабатываем его. */
-			handle_get(connection_fd, buffer);
-	} else if (bytes_read == 0)
-		/* Клиент разорвал соединение, не успев отправить данные.
-		Ничего не предпринимаем */
-		;
-	else
-		/* Операция чтения завершилась ошибкой. */
-		system_error("read");
+	} //while
 }
 int do_exit = 0;
 void terminator_sig_hndlr(int sn)
@@ -276,7 +326,7 @@ void server_run(struct in_addr local_address, uint16_t port)
 			поэтому закрываем их. */
 
 			close(STDIN_FILENO);
-			close(STDOUT_FILENO);
+			//close(STDOUT_FILENO);
 			/* Дочерний процесс не должен работать с серверным сокетом,
 			поэтому закрываем его дескриптор. */
 			close(server_socket);
