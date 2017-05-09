@@ -173,7 +173,7 @@ static void handle_connection(int connection_fd)
 			buffer[bytes_read] = '\0';
 			/*  строка, посылаемая клиентом, -- это запрос.
 			 */
-			printf(" server:Recieve : '%s'", buffer);
+			printf(" server:Recieve : %s", buffer);
 
 	
 			/* Проверка правильности последней операции чтения.
@@ -320,7 +320,10 @@ void server_run(struct in_addr local_address, uint16_t port)
 			поэтому закрываем их. */
 
 			close(STDIN_FILENO);
+			
+			//не будем закрывать STDOUT_FILENO, что бы оповещать.
 			//close(STDOUT_FILENO);
+			
 			/* Дочерний процесс не должен работать с серверным сокетом,
 			поэтому закрываем его дескриптор. */
 			close(server_socket);
