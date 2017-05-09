@@ -162,8 +162,7 @@ static void handle_connection(int connection_fd)
 
 	while (1) {
 		/* Получение данных от клиента. */
-		bytes_read =
-			read(connection_fd, buffer, sizeof(buffer) - 1);
+		bytes_read = read(connection_fd, buffer, sizeof(buffer) - 1);
 		if (bytes_read > 0) {
 
 
@@ -175,34 +174,21 @@ static void handle_connection(int connection_fd)
 			 */
 			printf(" server:Recieve : %s", buffer);
 
-	
-			/* Проверка правильности последней операции чтения.
-			Если она не завершилась успешно, произошел разрыв
-			соединения, поэтому завершаем работу. */
-			if (bytes_read == -1) {
+
+			/* Корректный запрос. Обрабатываем его. */
+			handle_get(connection_fd, buffer);
+		} else	if (bytes_read == -1) {
 				if (EINTR == errno)
 					continue;
 				system_error(" handle_connection read");
 				close(connection_fd);
 				return;
-			}
-			/* Проверка  */
-			if (0) {
-				/* Протокол не поддерживается. */
-				write(connection_fd, bad_request_response,
-					sizeof(bad_request_response));
-			} else
-				/* Корректный запрос. Обрабатываем его. */
-				handle_get(connection_fd, buffer);
-		} else if (bytes_read == 0)
-			/* Клиент разорвал соединение, не успев отправить данные.
+			} 
+		else {
+			//if (bytes_read == 0)
+			/* Клиент разорвал соединение.
 			Ничего не предпринимаем */
 			;
-		else {
-			/* Операция чтения завершилась ошибкой. */
-			system_error("read");
-
-			break;
 		}
 	} //while
 }
