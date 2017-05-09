@@ -160,7 +160,7 @@ static void handle_connection(int connection_fd)
 	char buffer[256];
 	ssize_t bytes_read;
 
-	while (1) {
+	while (do_exit) {
 		/* Получение данных от клиента. */
 		bytes_read = read(connection_fd, buffer, sizeof(buffer) - 1);
 		if (bytes_read > 0) {
