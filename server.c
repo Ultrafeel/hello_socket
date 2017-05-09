@@ -179,13 +179,13 @@ static void handle_connection(int connection_fd)
 
 			/* Корректный запрос. Обрабатываем его. */
 			handle_get(connection_fd, buffer);
-		} else	if (bytes_read == -1) {
-				if (EINTR == errno)
-					continue;
-				system_error(" handle_connection read");
-				close(connection_fd);
-				return;
-			} 
+		} else if (bytes_read == -1) {
+			if (EINTR == errno)
+				continue;
+			system_error(" handle_connection read");
+			close(connection_fd);
+			return;
+		}
 		else {
 			//if (bytes_read == 0)
 			/* Клиент разорвал соединение.

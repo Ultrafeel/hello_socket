@@ -114,6 +114,7 @@ int main(int argc, char *argv[])
 				}
 				if (do_termination)
 					break;
+				continue;
 			}
 			buffer[n] = 0;	
 			char * p_null = strchr(buffer, STOP_CHAR);
