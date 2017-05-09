@@ -158,10 +158,10 @@ static void handle_get(int connection_fd, const char* message)
 /* Обработка клиентского запроса */
 static void handle_connection(int connection_fd)
 {
-	char buffer[256];
+	char buffer[256] = "";
 	ssize_t bytes_read;
 
-	while (do_exit) {
+	while (!do_exit) {
 		/* Получение данных от клиента. */
 		bytes_read = read(connection_fd, buffer, sizeof(buffer) - 1);
 		if (bytes_read > 0) {
