@@ -101,7 +101,7 @@ enum {
 				strncpy(pcmdBuffer, buffer, ncmdrecv);
 				pcmdBuffer += ncmdrecv;
 				if (ncmdrecv < n_cmdBuff) {
-					n = read(sockfd, pcmdBuffer, n_cmdBuff - ncmdrecv);
+					n = recv(sockfd, pcmdBuffer, n_cmdBuff - ncmdrecv, MSG_WAITALL);
 					if (n < 0) {
 						perror("ERROR reading from socket");
 						break;
