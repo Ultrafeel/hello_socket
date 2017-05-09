@@ -14,6 +14,7 @@
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include <arpa/inet.h>
+#include <pthread.h>
 
 //char const gprogram_name[] = "server";
 char const* program_name = "server";
@@ -200,6 +201,37 @@ void terminator_sig_hndlr(int sn)
 	//	close(server_socket);
 }
 
+void * handle_thr_fn(void *arg)
+{
+	int connectionfd = *((int*) arg);
+	free(arg);
+	if (verbose)
+		printf("  thread for handling started\n");
+	handle_connection(connectionfd);
+	if (verbose)
+		printf("  thread for handling finished\n");
+	return((void *) 0);
+}
+
+int thread_serve(int connection)
+{
+	
+	int err = 0;
+	pthread_t c2_tid;
+	int * pconnfd = malloc(sizeof(connection));
+	if (!pconnfd) {
+		system_error("malloc");
+		return -1;
+	}
+	*pconnfd = connection;
+	err = pthread_create(&c2_tid, NULL, handle_thr_fn, (void*)pconnfd);
+	if (err != 0) {
+		printf(" c:can't create thread %d", err);
+		exit(1);
+	}
+	return err;
+
+}
 void proc_serve(int server_socket, int connection)
 {
 	
@@ -234,7 +266,7 @@ void proc_serve(int server_socket, int connection)
 		system_error("fork");
 }
 
-void server_run(struct in_addr local_address, uint16_t port)
+void server_run(struct in_addr local_address, uint16_t port, int process_mode)
 {
 	struct sockaddr_in socket_address;
 	int rval;
@@ -332,8 +364,11 @@ void server_run(struct in_addr local_address, uint16_t port)
 				inet_ntoa(socket_address.sin_addr));
 		}
 
+		if (process_mode)
 		/* Создание дочернего процесса для обработки запроса. */
-		proc_serve(server_socket, connection);
+			proc_serve(server_socket, connection);
+		else
+			thread_serve(connection);
 	}//loop for accept clients
 	puts("server is closing");
 	close(server_socket);
@@ -359,6 +394,8 @@ int main(int argc, char* const argv[])
 	/*  отображать развернутые сообщения. */
 	verbose = 1;
 
+	// 0 -thread_mode; 0 by default
+	int process_mode = 0;
 	/* Анализ опций. */
 	do {
 		next_option =
@@ -388,14 +425,14 @@ int main(int argc, char* const argv[])
 		case 't':
 			/* Пользователь ввел -t или --thread. */
 		{
-			printf("thread not supported\n");
-			exit(1);
+			process_mode = 0;
 		}
 			break;
 		case 'r':
 			/* Пользователь ввел -r или --process. */
 		{
-			printf("process mode\n");
+			process_mode = 1;
+
 		}
 			break;
 		case 'p':
@@ -433,10 +470,15 @@ int main(int argc, char* const argv[])
 	if (optind != argc)
 		print_usage(1);
 
+	if (process_mode)
+		printf("process mode\n");
+	else
+		printf("thread mode\n");
+
 	/* Отображение имени каталога, если программа работает в режиме
 	развернутых сообщений. */
 
 	/* Запуск сервера. */
-	server_run(local_address, port);
+	server_run(local_address, port, process_mode);
 	return 0;
 }
