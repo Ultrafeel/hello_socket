@@ -62,6 +62,17 @@ int main(int argc, char *argv[])
 		exit(1);
 	}
 
+			
+	/**/struct sigaction sa;
+	memset(&sa, 0, sizeof(sa));
+	sigemptyset(&sa.sa_mask);
+	
+	sa.sa_handler = &terminator_sig_hndlr;
+	sigaction(SIGTERM, &sa, NULL);
+	sa.sa_handler = &terminator_sig_hndlr;
+	sigaction(SIGINT, &sa, NULL);
+	
+	
 	char const quit_command[] = "quit";
 	/* Now ask for a message from the user, this message
 	 * will be read by server
