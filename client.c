@@ -68,14 +68,14 @@ int main(int argc, char *argv[])
 	 */
 
 	while (!do_termination) {
-		printf("Please enter the command ('%s'; to quit):", quit_command);
+		printf("Please enter the command ('%s'; to quit):\n %%", quit_command);
 		bzero(buffer, MAXLINE + 1);
 		if (!fgets(buffer, MAXLINE + 1, stdin)) {
 			if (errno != EINTR)
 				 system_error(" client: inputing command");
 			break;
 		}
-		if (!strcmp(buffer, quit_command))
+		if (0 == strcmp(buffer, quit_command))
 			break;
 		/* Send message to the server */
 		n = write(sockfd, buffer, strlen(buffer));
@@ -110,8 +110,8 @@ int main(int argc, char *argv[])
 				ssize_t nchar_mess = (p_null - buffer);
 				if (nchar_mess < n) {
 
-					int ncmdrecv = MIN(n - nchar_mess, n_cmdBuff);
-					strncpy(pcmdBuffer, buffer, ncmdrecv);
+					int ncmdrecv = MIN(n - nchar_mess - 1, n_cmdBuff);
+					strncpy(pcmdBuffer, p_null + 1, ncmdrecv);
 					pcmdBuffer += ncmdrecv;
 					if (ncmdrecv < n_cmdBuff) {
 						n = recv(sockfd, pcmdBuffer, n_cmdBuff - ncmdrecv, MSG_WAITALL);
@@ -122,9 +122,11 @@ int main(int argc, char *argv[])
 						}
 
 					}
-					if (strcmp(cmdBuffer, END_MARK)) {
+					if (0 == strcmp(cmdBuffer, END_MARK)) {
 						rqdone = 1;
 						break;
+					} else	{
+						printf(" wrong server response \n");
 					}
 				}
 			}
