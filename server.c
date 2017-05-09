@@ -80,6 +80,8 @@ void err_sys(char const* str)
 	err_show(str);
 }
 
+sig_atomic_t do_exit = 0;
+
 /* Обработка запроса  message и
  запись результата в файл с дескриптором CONNECTION_FD. */
 static void handle_get(int connection_fd, const char* message)
@@ -201,7 +203,6 @@ static void handle_connection(int connection_fd)
 		}
 	} //while
 }
-int do_exit = 0;
 void terminator_sig_hndlr(int sn)
 {
 	printf("\n terminator_sig_hndlr : %d.\n", sn);
