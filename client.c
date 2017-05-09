@@ -60,13 +60,8 @@ int main(int argc, char *argv[]) {
 	
    printf("Please enter the command: ");
    bzero(buffer,MAXLINE + 1);
-   fgets(buffer,MAXLINE + 1,stdin);
-  // char response[1024] = "";
-	//snprintf(response, sizeof(response),
-	//	"  %s, popen error . ", );
+   fgets(buffer,MAXLINE + 1, stdin);
 
-	//n = write(sockfd, buffer, strlen(buffer));
-	//if (n > 0)
    
    /* Send message to the server */
    n = write(sockfd, buffer, strlen(buffer));
