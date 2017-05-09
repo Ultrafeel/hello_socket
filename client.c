@@ -15,11 +15,11 @@
 #include "common.h"
    enum { MAXLINE = 255 };
   
-sig_atomic_t  termination_recieved = 0;
+sig_atomic_t  do_termination = 0;
 void terminator_sig_hndlr(int sn)
 {
 	printf("\n client: terminator_sig_hndlr : %d.\n", sn);
-	termination_recieved = 1;
+	do_termination = 1;
 }
 int main(int argc, char *argv[])
 {
@@ -67,7 +67,7 @@ int main(int argc, char *argv[])
 	 * will be read by server
 	 */
 
-	while (!termination_recieved) {
+	while (!do_termination) {
 		printf("Please enter the command ('%s'; to quit):", quit_command);
 		bzero(buffer, MAXLINE + 1);
 		if (!fgets(buffer, MAXLINE + 1, stdin)) {
@@ -81,7 +81,7 @@ int main(int argc, char *argv[])
 		n = write(sockfd, buffer, strlen(buffer));
 
 		if (n < 0) {
-			perror("ERROR writing to socket");
+			system_error("ERROR writing to socket");
 			exit(1);
 		}
 
@@ -95,12 +95,16 @@ int main(int argc, char *argv[])
 			/* Now read server response */
 			bzero(buffer, MAXLINE + 1);
 			int n = read(sockfd, buffer, MAXLINE);
-			buffer[n] = 0;
 			if (n < 0) {
-				perror("ERROR reading from socket");
-				break;
-				//exit(1);
+				if (EINTR != errno) {	
+					system_error("  reading from socket");				
+					do_termination = 1;
+					break;
+				}
+				if (do_termination)
+					break;
 			}
+			buffer[n] = 0;	
 			char * p_null = strchr(buffer, '\0');
 			if (p_null) {
 				ssize_t nchar_mess = (p_null - buffer);
@@ -112,7 +116,7 @@ int main(int argc, char *argv[])
 					if (ncmdrecv < n_cmdBuff) {
 						n = recv(sockfd, pcmdBuffer, n_cmdBuff - ncmdrecv, MSG_WAITALL);
 						if (n < 0) {
-							perror("ERROR reading from socket");
+							system_error("reading from socket.");
 							break;
 							//exit(1);
 						}
