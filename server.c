@@ -199,6 +199,41 @@ void terminator_sig_hndlr(int sn)
 	//if (-1 != server_socket)
 	//	close(server_socket);
 }
+
+void proc_serve(int server_socket, int connection)
+{
+	
+	pid_t child_pid;
+	child_pid = fork();
+	if (child_pid == 0) {
+		if (verbose)
+			printf(" child process for handling request: %d\n", getpid());
+		/* Это дочерний процесс. Потоки stdin и stdout ему не нужны,
+		 поэтому закрываем их. */
+		
+		close(STDIN_FILENO);
+		
+		//не будем закрывать STDOUT_FILENO, что бы оповещать.
+		//close(STDOUT_FILENO);
+		
+		/* Дочерний процесс не должен работать с серверным сокетом,
+		 поэтому закрываем его дескриптор. */
+		close(server_socket);
+		/* Обработка запроса. */
+		handle_connection(connection);
+		/* Обработка завершена. Закрываем соединение и завершаем
+		 дочерний процесс. */
+		close(connection);
+		exit(0);
+	} else if (child_pid > 0) {
+		/* Это родительский процесс. Дескриптор клиентского сокета
+		 ему не нужен. Переход к приему следующего запроса. */
+		close(connection);
+	} else
+		/* Вызов функции fork() завершился неудачей. */
+		system_error("fork");
+}
+
 void server_run(struct in_addr local_address, uint16_t port)
 {
 	struct sockaddr_in socket_address;
@@ -266,7 +301,6 @@ void server_run(struct in_addr local_address, uint16_t port)
 		struct sockaddr_in remote_address;
 		socklen_t address_length;
 		int connection;
-		pid_t child_pid;
 
 		/* Прием запроса. Эта функция блокируется до тех пор, пока
 		не поступит запрос. */
@@ -299,34 +333,8 @@ void server_run(struct in_addr local_address, uint16_t port)
 		}
 
 		/* Создание дочернего процесса для обработки запроса. */
-		child_pid = fork();
-		if (child_pid == 0) {
-			printf(" child proc: %d\n", getpid());
-			/* Это дочерний процесс. Потоки stdin и stdout ему не нужны,
-			поэтому закрываем их. */
-
-			close(STDIN_FILENO);
-			
-			//не будем закрывать STDOUT_FILENO, что бы оповещать.
-			//close(STDOUT_FILENO);
-			
-			/* Дочерний процесс не должен работать с серверным сокетом,
-			поэтому закрываем его дескриптор. */
-			close(server_socket);
-			/* Обработка запроса. */
-			handle_connection(connection);
-			/* Обработка завершена. Закрываем соединение и завершаем
-			дочерний процесс. */
-			close(connection);
-			exit(0);
-		} else if (child_pid > 0) {
-			/* Это родительский процесс. Дескриптор клиентского сокета
-			ему не нужен. Переход к приему следующего запроса. */
-			close(connection);
-		} else
-			/* Вызов функции fork() завершился неудачей. */
-			system_error("fork");
-	}
+		proc_serve(server_socket, connection);
+	}//loop for accept clients
 	puts("server is closing");
 	close(server_socket);
 	server_socket = -1;
