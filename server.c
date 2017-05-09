@@ -149,7 +149,7 @@ static void handle_get(int connection_fd, const char* message)
 		write(connection_fd, "\0", 1);
 
 		write(connection_fd, END_MARK,
-			sizeof(END_MARK) / sizeof(*END_MARK));
+			MARK_SIZE);
 
 		//response_done = 1;
 

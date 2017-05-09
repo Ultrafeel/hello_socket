@@ -79,14 +79,15 @@ int main(int argc, char *argv[])
 	 */
 
 	while (!do_termination) {
-		printf("Please enter the command ('%s'; to quit):\n %%", quit_command);
+		printf("Please enter the command ('%s'; to quit):\n %% ", quit_command);
 		bzero(buffer, MAXLINE + 1);
 		if (!fgets(buffer, MAXLINE + 1, stdin)) {
 			if (errno != EINTR)
 				 system_error(" client: inputing command");
 			break;
 		}
-		if (0 == strcmp(buffer, quit_command))
+		if (0 == strncmp(buffer, quit_command, sizeof(quit_command) - 1) 
+			&& strlen(buffer) == sizeof(quit_command))
 			break;
 		/* Send message to the server */
 		n = write(sockfd, buffer, strlen(buffer));
@@ -97,7 +98,7 @@ int main(int argc, char *argv[])
 		}
 
 		enum {
-			n_cmdBuff = 3
+			n_cmdBuff = MARK_SIZE
 		};
 		char cmdBuffer[n_cmdBuff + 1] = "";
 		char * pcmdBuffer = cmdBuffer;
@@ -115,7 +116,7 @@ int main(int argc, char *argv[])
 				if (do_termination)
 					break;
 				continue;
-			}
+			} //else if ()
 			buffer[n] = 0;	
 			char * p_null = strchr(buffer, STOP_CHAR);
 			if (p_null) {
