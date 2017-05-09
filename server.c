@@ -174,7 +174,8 @@ static void handle_connection(int connection_fd)
 			buffer[bytes_read] = '\0';
 			/*  строка, посылаемая клиентом, -- это запрос.
 			 */
-			printf(" server:Recieve : %s", buffer);
+			if (verbose)
+				printf(" server:Recieve : %s", buffer);
 
 
 			/* Корректный запрос. Обрабатываем его. */
@@ -189,14 +190,18 @@ static void handle_connection(int connection_fd)
 		else {
 			//if (bytes_read == 0)
 			/* Клиент разорвал соединение.
-			Ничего не предпринимаем */
-			;
+			 */
+			if (verbose)
+				puts(" handle_connection : zero read , return.");
+			return;
+			
 		}
 	} //while
 }
 void terminator_sig_hndlr(int sn)
 {
-	printf("\n terminator_sig_hndlr : %d.\n", sn);
+	if (verbose)
+		printf("\n terminator_sig_hndlr : %d.\n", sn);
 	do_exit = 1;
 	//if (-1 != server_socket)
 	//	close(server_socket);
@@ -246,7 +251,7 @@ void proc_serve(int server_socket, int connection)
 		
 		close(STDIN_FILENO);
 		
-		//не будем закрывать STDOUT_FILENO, что бы оповещать.
+		//не будем закрывать STDOUT_FILENO, чтобы оповещать.
 		//close(STDOUT_FILENO);
 		
 		/* Дочерний процесс не должен работать с серверным сокетом,
@@ -284,7 +289,7 @@ void server_run(struct in_addr local_address, uint16_t port, int process_mode)
 	if (server_socket == -1) system_error("socket");
 	
 		
-	/**/struct sigaction sa;
+	struct sigaction sa;
 	memset(&sa, 0, sizeof(sa));
 	sigemptyset(&sa.sa_mask);
 	
