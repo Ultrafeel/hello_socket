@@ -180,6 +180,9 @@ static void handle_connection(int connection_fd)
 			Если она не завершилась успешно, произошел разрыв
 			соединения, поэтому завершаем работу. */
 			if (bytes_read == -1) {
+				if (EINTR == errno)
+					continue;
+				system_error(" handle_connection read");
 				close(connection_fd);
 				return;
 			}
