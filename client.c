@@ -105,7 +105,7 @@ int main(int argc, char *argv[])
 					break;
 			}
 			buffer[n] = 0;	
-			char * p_null = strchr(buffer, '\0');
+			char * p_null = strchr(buffer, STOP_CHAR);
 			if (p_null) {
 				ssize_t nchar_mess = (p_null - buffer);
 				if (nchar_mess < n) {

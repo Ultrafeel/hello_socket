@@ -19,6 +19,7 @@ void system_error(const char* operation) {
 }
 
 #define TCP_PORT (1234)
+#define STOP_CHAR '\0'
 #define END_MARK "end"
 #define MAX(x, y) (((x) > (y)) ? (x) : (y))
 #define MIN(x, y) (((x) < (y)) ? (x) : (y))
