@@ -471,10 +471,6 @@ int main(int argc, char* const argv[])
 		}
 	} while (next_option != -1);
 
-	/* Программа не принимает никаких дополнительных аргументов.
-	Если они есть, выдается сообщение об ошибке. */
-	if (optind != argc)
-		print_usage(1);
 
 	if (process_mode)
 		printf("process mode\n");
